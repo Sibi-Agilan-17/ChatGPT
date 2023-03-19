@@ -5,17 +5,18 @@ import argparse
 import json
 import os
 import sys
+import typing
 from typing import NoReturn
 
 import requests
 import tiktoken
 
-from . import typing as t
-from .utils import create_completer
-from .utils import create_keybindings
-from .utils import create_session
-from .utils import get_filtered_keys_from_object
-from .utils import get_input
+from chatgptapi.types import *
+from chatgptapi.utils import create_completer
+from chatgptapi.utils import create_keybindings
+from chatgptapi.utils import create_session
+from chatgptapi.utils import get_filtered_keys_from_object
+from chatgptapi.utils import get_input
 
 
 class Chatbot:
@@ -50,6 +51,9 @@ class Chatbot:
         self.frequency_penalty = frequency_penalty
         self.reply_count = reply_count
 
+        if not len(self.api_key) > 0:
+            raise ChatbotError('API key is missing')
+
         if proxy:
             self.session.proxies = {
                 "http": proxy,
@@ -66,8 +70,7 @@ class Chatbot:
         }
 
         if self.get_token_count("default") > self.max_tokens:
-            error = t.ChatbotError("System prompt is too long")
-            raise error
+            raise ChatbotError("System prompt is too long")
 
     def add_to_conversation(
         self,
@@ -145,8 +148,10 @@ class Chatbot:
         # Make conversation if it doesn't exist
         if convo_id not in self.conversation:
             self.reset(convo_id=convo_id, system_prompt=self.system_prompt)
+
         self.add_to_conversation(prompt, "user", convo_id=convo_id)
         self.__truncate_conversation(convo_id=convo_id)
+
         # Get response
         response = self.session.post(
             os.environ.get("API_URL") or "https://api.openai.com/v1/chat/completions",
@@ -172,13 +177,15 @@ class Chatbot:
             },
             stream=True,
         )
+
         if response.status_code != 200:
-            error = t.APIConnectionError(
+            error = APIConnectionError(
                 f"{response.status_code} {response.reason} {response.text}",
             )
             raise error
-        response_role: str = None
+        response_role: typing.Union[str, None] = None
         full_response: str = ""
+
         for line in response.iter_lines():
             if not line:
                 continue
@@ -199,6 +206,7 @@ class Chatbot:
                 content = delta["content"]
                 full_response += content
                 yield content
+
         self.add_to_conversation(full_response, response_role, convo_id=convo_id)
 
     def ask(
@@ -285,7 +293,8 @@ ChatGPT Configuration:
             """,
         )
 
-    def print_help(self) -> None:
+    @staticmethod
+    def print_help() -> None:
         """
         Prints the help message
         """
@@ -366,12 +375,14 @@ def main() -> NoReturn:
     """
     Main function
     """
+
     print(
         """
     ChatGPT - Official ChatGPT API
     Repo: github.com/acheong08/ChatGPT
     """,
     )
+
     print("Type '!help' to show a full list of commands")
     print("Press Esc followed by Enter or Alt+Enter to send a message.\n")
 
@@ -462,6 +473,7 @@ def main() -> NoReturn:
             reply_count=args.reply_count,
             engine=args.model,
         )
+
     # Check if internet is enabled
     if args.enable_internet:
         from importlib.resources import path
@@ -488,6 +500,7 @@ def main() -> NoReturn:
     key_bindings = create_keybindings()
     if args.submit_key:
         key_bindings = create_keybindings(args.submit_key)
+
     # Start chat
     while True:
         print()
@@ -502,7 +515,7 @@ def main() -> NoReturn:
             print("\nExiting...")
             sys.exit()
         except BaseException as e:
-            error = t.CommandError("Command line program unknown error")
+            error = CommandError("Command line program unknown error")
             raise error from e
         if prompt.startswith("!"):
             try:
