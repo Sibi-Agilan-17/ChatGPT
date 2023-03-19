@@ -11,12 +11,12 @@ from typing import NoReturn
 import requests
 import tiktoken
 
-from chatgptapi.types import *
-from chatgptapi.utils import create_completer
-from chatgptapi.utils import create_keybindings
-from chatgptapi.utils import create_session
-from chatgptapi.utils import get_filtered_keys_from_object
-from chatgptapi.utils import get_input
+from .types import *
+from .utils import create_completer
+from .utils import create_keybindings
+from .utils import create_session
+from .utils import get_filtered_keys_from_object
+from .utils import get_input
 
 
 class Chatbot:
